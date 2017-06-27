@@ -3,7 +3,7 @@
 *   en tigo
 *   TigoLife
 * */
-
+var querystring = require('querystring');
 var express = require('express');
 var path = require('path');
 
@@ -33,44 +33,39 @@ app.get('/', function(req, res){
 
 //coneccion a el server de php
 
-function peticionWS(metodo, parametros) {
+function peticionWS(parametros, callback) {
 //metodo es un string con el tipo de metodo, parametros un json con los parametros
+
+    var data = querystring.stringify(parametros);
+    var datalen = data.length;
+
     var options = {
         host: '192.168.19.58',
-        port: '8080',
+        port: '80',
         path: '/tigolife/ajax/webSocketData.php',
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': datalen
+        },
     };
 
-    if(metodo != '' && metodo != null){
-        options.method = metodo;
-    }else{
-        return 'metodo no especificado';
-    }
-
-    if(parametros && parametros.length){
-        options['headers'] = parametros;
-    }
-    console.log(options);
-
-    var req = http.request(options, function (res) {
-        console.log('entra');
-        console.log('STATUS: ' + res.statusCode+ 'HEADERS: ' + JSON.stringify(res.headers));
-
-        var partesRespuesta = [];
-        res.on('data', function(parte) {
-            partesRespuesta.push(parte);
-            console.log('partes:' + partesRespuesta);
-        }).on('end', function() {
-            var dataRes = Buffer.concat(partesRespuesta);
-            console.log('DATA: ' + dataRes);
-            //return dataRes;
-        })
+    var req = http.request(options, function (response) {
+        response.setEncoding('utf8');
+        var partesRespuesta = '';
+        response.on('data', function(parte) {
+            partesRespuesta+=parte;
+        }),
+        response.on('end', function () {
+            callback(partesRespuesta);
+        });
     });
-
     req.on('error', function(e) {
         console.log('ERROR: ' + e.message);
     });
+
+    req.write(data);
+    req.end();
 }
 
 //WebSocket
@@ -80,16 +75,18 @@ var listaTickets = [];
 var tickets = io
     .of('/ticket')
     .on('connection', function (socket) {
+
         console.log('nuevo usuario conectado');
 
         if(listaTickets.length == 0){
-            console.log('entra porque no hay');
             var lista = peticionWS({
                 action: 2
+            }, function (data) {
+                console.log(data);
+                listaTickets = data;
             });
-            if( lista != null){
-                listaTickets = lista;
-            }
+        }else {
+            console.log('lista '+ listaTickets);
         }
         //socket.broadcast.emit('tickets', listaTickets);
 
