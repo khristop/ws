@@ -32,7 +32,6 @@ app.get('/', function(req, res){
 });
 
 //coneccion a el server de php
-
 function peticionWS(parametros, callback) {
 //metodo es un string con el tipo de metodo, parametros un json con los parametros
 
